@@ -1,9 +1,21 @@
 import sqlite3
+import sys
 import json
 import urllib.request
 
-con1 = sqlite3.connect('./vocab.db')
+con1 = ""
+try: 
+    con1 = sqlite3.connect('/Volumes/Kindle/system/vocabulary/vocab.db')
+except:
+    print("kindle not connected")
+    sys.exit()
+
 cur1 = con1.cursor()
+tables = [x for x in cur1.execute("SELECT name FROM sqlite_master")]
+
+if not tables: 
+    print("kindle not connected")
+    sys.exit()
 
 con2 = sqlite3.connect('./Dictionary.db')
 cur2 = con2.cursor()
@@ -42,12 +54,12 @@ note = {
         
 invoke('createDeck', deck='vocab')
 
-words = [a for a in cur1.execute("SELECT word FROM 'WORDS'")]
+all_words = [a for a in cur1.execute("SELECT word FROM 'WORDS'")]
 vocab = {}
-words_slice = words[25:45]
+words_slice = all_words[0:200] # need to fix this, for some reason query breaks with full slice 
 
 for w in words_slice:
-    defs = [a for a in cur2.execute(f"SELECT  definition FROM 'entries' WHERE word='{w[0]}'")]
+    defs = [a for a in cur2.execute(f"SELECT  definition FROM entries WHERE word='{w[0]}'")]
     if defs:
         for d in defs:
             clean_def = d[0].replace("\n","").replace("   ", " ")
