@@ -3,6 +3,9 @@ import sys
 import json
 import urllib.request
 
+#### utilizes ankiconnect, which is a plugin for anki that exposes an REST API on port 8765
+
+# exit if Kindle is not connected
 con1 = ""
 try: 
     con1 = sqlite3.connect('/Volumes/Kindle/system/vocabulary/vocab.db')
@@ -10,19 +13,22 @@ except:
     print("kindle not connected")
     sys.exit()
 
+# exit if vocab db doesnt have any tables
 cur1 = con1.cursor()
 tables = [x for x in cur1.execute("SELECT name FROM sqlite_master")]
-
 if not tables: 
-    print("kindle not connected")
+    print("kindle db has no tables")
     sys.exit()
 
+# establish connection to dictionary which is in the directory
 con2 = sqlite3.connect('./Dictionary.db')
 cur2 = con2.cursor()
 
+# request builder
 def request(action, **params):
     return {'action': action, 'params': params, 'version': 6}
 
+# ankiconnect request handler
 def invoke(action, **params):
     requestJson = json.dumps(request(action, **params)).encode('utf-8')
     response = json.load(urllib.request.urlopen(urllib.request.Request('http://localhost:8765', requestJson)))
@@ -38,6 +44,7 @@ def invoke(action, **params):
         return None
     return response['result']
 
+# note template for addNote call; probably should make a template/data type
 note = {
         "deckName": "vocab",
         "modelName": "Basic",
@@ -52,19 +59,26 @@ note = {
         "tags": []
         }
         
+# create deck in Anki, will not overwrite if already exists
 invoke('createDeck', deck='vocab')
 
+# find all words from kindle vocab.db
 all_words = [a for a in cur1.execute("SELECT word FROM 'WORDS'")]
-vocab = {}
-words_slice = all_words[0:200] # need to fix this, for some reason query breaks with full slice 
 
-for w in words_slice:
-    defs = [a for a in cur2.execute(f"SELECT  definition FROM entries WHERE word='{w[0]}'")]
+# dictionary mapping words to definitions
+vocab = {}
+
+# create array if definitions for every word and add it to vocab dictionary
+for w in all_words:
+    word = w[0]
+    word = word.replace("'", "''") # single quotes are escaped in sqlite with an additional single quote
+    defs = [a for a in cur2.execute(f"SELECT definition FROM entries WHERE word='{word}'")]
     if defs:
         for d in defs:
             clean_def = d[0].replace("\n","").replace("   ", " ")
             vocab.setdefault(w[0], [] ).append(clean_def)
 
+# create note and add to deck for every key/value pair in vocab dict; will not add duplicates
 for key, value in vocab.items():
     cleaned = '\n\n'.join(value)
     note['fields']['Front'] = key.lower()
@@ -73,7 +87,6 @@ for key, value in vocab.items():
     if response is not None:
         print(key.lower())
 
+# close connections
 con1.close()
 con2.close()
-
-
