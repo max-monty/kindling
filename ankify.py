@@ -20,8 +20,10 @@ if not tables:
     print("kindle db has no tables")
     sys.exit()
 
+print("Adding new words from Kindle to Anki vocab deck:")
+
 # establish connection to dictionary which is in the directory
-con2 = sqlite3.connect('./Dictionary.db')
+con2 = sqlite3.connect('./dict.db')
 cur2 = con2.cursor()
 
 # request builder
